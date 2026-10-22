@@ -64,9 +64,9 @@ const EMBEDDING_SOURCES = [
   'https://huggingface.co',
 ];
 
-// Embedding 模型: all-MiniLM-L6-v2 (Xenova/transformers.js ONNX 格式)
-const EMBEDDING_DIR = path.join(MODELS_DIR, 'embedding', 'Xenova', 'all-MiniLM-L6-v2');
-const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
+// Embedding 模型: bge-small-zh-v1.5 (Xenova/transformers.js ONNX 格式)
+const EMBEDDING_DIR = path.join(MODELS_DIR, 'embedding', 'Xenova', 'bge-small-zh-v1.5');
+const EMBEDDING_MODEL = 'Xenova/bge-small-zh-v1.5';
 const EMBEDDING_FILES = [
   'config.json',
   'tokenizer.json',
@@ -100,7 +100,7 @@ function download(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const hostname = new URL(url).hostname;
-    console.log(`[下载] ${label} ← ${hostname} (无进度条，~400MB 请耐心等待)...`);
+    console.log(`[下载] ${label} ← ${hostname} (无进度条，请耐心等待)...`);
 
     const doRequest = (reqUrl: string, redirectsLeft: number, attempt: number) => {
       const file = fs.createWriteStream(dest);
@@ -301,9 +301,9 @@ async function main() {
     console.log('[校验] 模型文件 GGUF 魔数校验通过');
   }
 
-  // Download Embedding model files (all-MiniLM-L6-v2 ONNX files)
+  // Download Embedding model files (bge-small-zh-v1.5 ONNX files)
   // 使用 Node.js 下载（undici.fetch 连接超时 10s 太短，https.get 无此限制）
-  console.log('\n[Embedding] 下载 all-MiniLM-L6-v2 模型文件 (~80MB)...');
+  console.log('\n[Embedding] 下载 bge-small-zh-v1.5 模型文件 (~25MB)...');
   ensureDir(path.join(EMBEDDING_DIR, 'onnx'));
 
   for (const file of EMBEDDING_FILES) {

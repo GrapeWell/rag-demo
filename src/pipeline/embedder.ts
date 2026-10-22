@@ -5,7 +5,7 @@ let pipeline: FeatureExtractionPipeline | null = null;
 let isReady = false;
 let loadError: string | null = null;
 
-const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2';
+const MODEL_NAME = 'Xenova/bge-small-zh-v1.5';
 const LOCAL_MODELS = path.resolve(process.cwd(), 'models', 'embedding');
 
 export function getEmbeddingStatus() {
@@ -34,7 +34,7 @@ export async function embed(texts: string[]): Promise<number[][]> {
 
   const embeddings: number[][] = [];
   for(const text of texts) {
-    const result = await pipeline!(text, { pooling: 'mean', normalize: true });
+    const result = await pipeline!(text, { pooling: 'cls', normalize: true });
     embeddings.push(Array.from(result.data as Float32Array))
   }
 

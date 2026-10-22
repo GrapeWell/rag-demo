@@ -1,10 +1,10 @@
-const CHUNK_SIZE = 512;   // 每块最多512个token
-const CHUNK_OVERLAP = 64; // 相邻块之间重叠64个token
+const CHUNK_SIZE = 512;   // 基础块长度上限，按 JS 字符串长度计算
+const CHUNK_OVERLAP = 64; // 从前一块末尾复制的长度，单位同上
 const SEPARATORS = ['\n\n', '\n', '。', '！', '？', '.', '!', '?', ' ', ''];
 
 export function chunkText(text: string): { text: string; index: number }[] {
   const cleanText = text.replace(/\r\n/g, '\n').replace(/\t/g, ' ').replace(/\0/g, '');
-  const chunks = splitRecursive(cleanText, SEPARATORS, CHUNK_SIZE, CHUNK_OVERLAP)
+  const chunks = addOverlap(splitRecursive(cleanText, SEPARATORS, CHUNK_SIZE), CHUNK_OVERLAP)
   return chunks.map((value, index) => ({ text: value, index }))
 }
 
@@ -15,7 +15,7 @@ export function chunkText(text: string): { text: string; index: number }[] {
  * @param overlap - 重叠部分大小
  * @returns 
  */
-function splitRecursive(text: string, separators: string[], chunkSize: number, overlap: number): string[] {
+function splitRecursive(text: string, separators: string[], chunkSize: number): string[] {
   // 如果内容长度为0则直接返回空块
   if (text.length === 0) return [];
   
@@ -43,17 +43,21 @@ function splitRecursive(text: string, separators: string[], chunkSize: number, o
     }
   }
 
+  if (current.trim()) {
+    result.push(current.trim())
+  }
+
   // 对仍然过长的块进行分割
   const final: string[] = []
   for (const chunk of result) {
     if (chunk.length > chunkSize && resetSep.length > 0) {
-      final.push(...splitRecursive(chunk, resetSep, chunkSize, overlap))
+      final.push(...splitRecursive(chunk, resetSep, chunkSize))
     } else {
       final.push(chunk)
     }
   }
 
-  return addOverlap(final, overlap)
+  return final
 }
 
 /**

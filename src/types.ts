@@ -2,7 +2,7 @@
 export interface ChunkRecord {
   id: string;
   text: string;       // 片段文本
-  vector: number[];   // 384维向量
+  vector: number[];   // 512维向量
   docId: string;      // 属于哪个文档
   docName: string;    // 文档文件名
   chunkIndex: number; // 在文档内的序号

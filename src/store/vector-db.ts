@@ -24,7 +24,7 @@ export async function getTable(): Promise<Table> {
   } else {
     // 先用一条记录创建表，然后删除（LanceDB需要判断schema）
     table = await conn.createTable(TABLE_NAME, [{
-      id: '', text: '', vector: new Array(384).fill(0) as number[],
+      id: '', text: '', vector: new Array(512).fill(0) as number[],
       docId: '', docName: '', chunkIndex: 0, createdAt: new Date().toISOString(),
     }]);
     await (table as Table).delete('id = ""')
