@@ -7,7 +7,8 @@ const DATA_DIR = path.resolve(process.cwd(), 'data', 'lancedb');
 const TABLE_NAME = 'chunks';
 
 let db: Connection | null = null;
-let table: Table | null = null;
+let table: Promise<Table> | undefined;
+let textIndex: Promise<void> | undefined;
 
 export async function getDb(): Promise<Connection> {
   if (!db) db = await lancedb.connect(DATA_DIR);
@@ -15,22 +16,27 @@ export async function getDb(): Promise<Connection> {
 }
 
 export async function getTable(): Promise<Table> {
-  if (table) return table;
+  return table ??= openChunksTable().catch((error) => {
+    table = undefined;
+    throw error;
+  });
+}
+
+async function openChunksTable(): Promise<Table> {
   const conn = await getDb();
   const tableNames = await conn.tableNames();
 
   if (tableNames.includes(TABLE_NAME)) {
-    table = await conn.openTable(TABLE_NAME);
-  } else {
-    // 先用一条记录创建表，然后删除（LanceDB需要判断schema）
-    table = await conn.createTable(TABLE_NAME, [{
-      id: '', text: '', vector: new Array(512).fill(0) as number[],
-      docId: '', docName: '', chunkIndex: 0, createdAt: new Date().toISOString(),
-    }]);
-    await (table as Table).delete('id = ""')
+    return conn.openTable(TABLE_NAME);
   }
 
-  return table;
+  // 先用一条记录创建表，然后删除（LanceDB需要判断schema）
+  const created = await conn.createTable(TABLE_NAME, [{
+    id: '', text: '', vector: new Array(512).fill(0) as number[],
+    docId: '', docName: '', chunkIndex: 0, createdAt: new Date().toISOString(),
+  }]);
+  await created.delete('id = ""');
+  return created;
 }
 
 
@@ -49,12 +55,53 @@ export async function searchChunks(vector: number[], limit = 5) {
     .toArray();
 
   return results.map((r: Record<string, unknown>) => ({
-    text: r.text as string,
-    docName: r.docName as string,
-    chunkIndex: r.chunkIndex as number,
+    ...toChunkMatch(r),
     docId: r.docId as string,
     _distance: r._distance as number,
   }))
+}
+
+function toChunkMatch(row: Record<string, unknown>) {
+  return {
+    id: row.id as string,
+    text: row.text as string,
+    docName: row.docName as string,
+    chunkIndex: row.chunkIndex as number,
+  };
+}
+
+async function createTextIndexIfNeeded(tbl: Table): Promise<void> {
+  const indices = await tbl.listIndices();
+  if (indices.some((index) => index.indexType === 'FTS' && index.columns.includes('text'))) return;
+
+  // 默认分词依赖空白和标点，连续中文用字符 n-gram 切分。
+  await tbl.createIndex('text', {
+    config: lancedb.Index.fts({
+      baseTokenizer: 'ngram',
+      ngramMinLength: 2,
+      ngramMaxLength: 3,
+      prefixOnly: false,
+      stem: false,
+      removeStopWords: false,
+    }),
+    replace: false,
+  });
+}
+
+export async function searchChunksByText(query: string, limit = 5) {
+  const tbl = await getTable();
+  textIndex ??= createTextIndexIfNeeded(tbl).catch((error) => {
+    textIndex = undefined;
+    throw error;
+  });
+  await textIndex;
+
+  const results = await tbl.query()
+    .fullTextSearch(query, { columns: ['text'] })
+    .select(['id', 'text', 'docName', 'chunkIndex', '_score'])
+    .limit(limit)
+    .toArray();
+  return results.map(toChunkMatch);
 }
 
 // 文档统计

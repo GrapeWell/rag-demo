@@ -22,7 +22,7 @@ export interface SearchResult {
   text: string;
   docName: string;
   chunkIndex: number;
-  similarity: number;
+  similarity?: number; // 向量检索命中时的余弦相似度
 }
 
 // 回答来源引用
